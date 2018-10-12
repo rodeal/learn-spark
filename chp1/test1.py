@@ -4,7 +4,8 @@ Created on Wed Apr 18 15:22:29 2018
 
 @author: yuanyu
 """
-
+import findspark
+findspark.init()
 from pyspark import SparkContext
 
 sc = SparkContext("local[4]", "First Spark App")

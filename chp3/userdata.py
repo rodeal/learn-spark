@@ -4,7 +4,8 @@ Created on Thu Oct 11 15:06:09 2018
 
 @author: yuanyu
 """
-
+import findspark
+findspark.init()
 from pyspark import SparkContext
 import matplotlib.pyplot as plt
 import numpy as np
