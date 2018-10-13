@@ -32,7 +32,7 @@ print("Average # of ratings per movie: %2.2f" %ratings_per_movie)
 
 count_by_rating = ratings.countByValue()
 x_axis = list(count_by_rating.keys())
-y_axis = [float(c) for c in count_by_rating.values()]
+y_axis = np.array([float(c) for c in count_by_rating.values()])
 y_axis_normed = y_axis / y_axis.sum()
 pos = np.arange(len(x_axis))
 width = 1.0
@@ -44,4 +44,14 @@ ax.set_xticklabels(x_axis)
 plt.bar(pos, y_axis_normed, width, color='lightblue')
 plt.xticks(rotation=30)
       
+"""
+评级次数
+"""
+user_ratings_grouped = rating_data.map(lambda fields: (int(fields[0]), int(fields[2]))).groupByKey()
+user_ratings_byuser = user_ratings_grouped.map(lambda x: (x[0], len(x[1])))
+user_ratings_byuser.take(5)
+
+user_ratings_byuser_local = user_ratings_byuser.map(lambda x: x[1]).collect()
+plt.hist(user_ratings_byuser_local, bins=200, color='lightblue', normed=True)
+
 sc.stop()
