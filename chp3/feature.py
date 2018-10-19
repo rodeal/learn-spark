@@ -13,6 +13,7 @@ import numpy as np
 import datetime
 import re
 from scipy import sparse as sp
+from pyspark.mllib.feature import Normalizer
 
 sc = SparkContext("local[4]", "First Spark App")
 
@@ -111,4 +112,24 @@ all_terms_bcast = sc.broadcast(all_terms_dict)
 all_terms_bcast_value = all_terms_bcast.value
 term_vectors = title_terms.map(lambda terms: create_vector(terms, all_terms_bcast_value))
 term_vectors.take(5)
-sc.stop()
+
+"""
+规范化特征
+"""
+np.random.seed(42)
+x = np.random.randn(10)
+norm_x_2 = np.linalg.norm(x) #计算二阶范数
+normalized_x = x / norm_x_2
+print("x:\n%s" %x)
+print("2-Norm of x: %2.4f" %norm_x_2)
+print("Normalized x: \n%s" %normalized_x)
+print("2-Norm of normalized_x: %2.4f" %np.linalg.norm(normalized_x))
+
+normalizer = Normalizer()
+vector = sc.parallelize([x])
+normalized_x_mllib =normalizer.transform(vector).first().toArray()
+print("x:\n%s" %x)
+print("2-Norm of x: %2.4f" %norm_x_2)
+print("Normalized x: \n%s" %normalized_x_mllib)
+print("2-Norm of normalized_x: %2.4f" %np.linalg.norm(normalized_x_mllib))
+#sc.stop()
