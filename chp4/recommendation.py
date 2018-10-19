@@ -18,19 +18,24 @@ def to_implicit(x):
         return 0
     else:
         return 1
-
+    
 #转换为Rating类
 rawData = sc.textFile("../data/ml-100k/u.data")
 rawRatings = rawData.map(lambda lines: lines.split('\t')[:3])
 ratings = rawRatings.map(lambda fields: Rating(int(fields[0]), int(fields[1]), float(fields[2])))
-implicit_ratings = ratings.map(lambda fields: Rating(fields[0], fields[1], to_implicit(fields[3])))
+implicit_ratings = ratings.map(lambda fields: Rating(fields[0], fields[1], int(to_implicit(fields[2]))))
 """
 模型参数：
 rank: ALS模型中的因子个数，即低阶近似矩阵中的隐含特征个数 10-200
 iterations: 迭代次数 10左右
 lambda: 控制模型的正则化过程，防止过拟合；需要通过交叉验证来进行标定
+classmethod train(ratings, rank, iterations=5, lambda_=0.01, blocks=-1,
+                                                  nonnegative=False, seed=None)
+classmethod trainImplicit(ratings, rank, iterations=5, lambda_=0.01, blocks=-1,
+                                      alpha=0.01, nonnegative=False, seed=None)
 """
 model = ALS.train(ratings, 50, 10, 0.01)
+model_implicit = ALS.train(ratings, 50, 10)
 
 """
 模型返回：
@@ -42,3 +47,15 @@ user_num = model.userFeatures().count()
 movie_num = model.productFeatures().count()
 print("用户数量:", user_num)
 print("电影数量:", movie_num)
+
+"""
+模型应用:
+预测：model.predict()
+输出某用户的前k个推荐：model.recomendProducts(user, num)
+predict函数可以输入以(user, item)ID对类型的RDD
+"""
+predictedRating = model.predict(789, 123)
+userId = 789
+K = 10
+topKRecs = model.recommendProducts(userId, K)
+print(topKRecs)
