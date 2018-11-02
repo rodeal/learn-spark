@@ -12,6 +12,7 @@ from pyspark.mllib.recommendation import ALS
 from pyspark.mllib.recommendation import Rating
 import numpy as np
 from numpy import linalg as LA
+import math
 
 sc = SparkContext("local[4]", "First Spark App")
 
@@ -24,6 +25,19 @@ def to_implicit(x):
 def cosineSimilarity(vec1, vec2):
     return float((np.dot(vec1, vec2) / (LA.norm(vec1) * LA.norm(vec2))))
     
+def avgPrecisionK(actual, predicted, k):
+    predK = predicted.take(k)
+    score = 0.0
+    numHits = 0.0
+    for (i, p) in zip(range(k), predK):
+        if actual.filter(lambda x: x == p).count() != 0:
+            numHits += 1.0
+            score += numHits / (i + 1.0)
+    if actual.isEmpty():
+        return 1
+    else:
+        return (score / min((actual.count(), k)))
+
 #转换为Rating类
 rawData = sc.textFile("../data/ml-100k/u.data")
 rawRatings = rawData.map(lambda lines: lines.split('\t')[:3])
@@ -58,7 +72,7 @@ PART I 用户推荐
 模型应用:
 预测：model.predict()
 输出某用户的前k个推荐：model.recomendProducts(user, num)
-predict函数可以输入以(user, item)ID对类型的RDD
+predict函数可以输入以(user, item)ID对类型的RDD,代表某用户对某物品的预测评分
 """
 predictedRating = model.predict(789, 123)
 userId = 789
@@ -89,4 +103,33 @@ sims = model.productFeatures().map(lambda items: (items[0], cosineSimilarity(np.
 sortedSims = sims.top(K, key=lambda x: x[1])
 sortedSims2 = sims.top(K+1, key=lambda x: x[1])
 similar_titles = [(titles[x[0]], x[1]) for x in sortedSims2[1:11]]
+
+"""
+Part III 模型评价
+MSE
+以及
+MAPK, Average precision at K metric
+"""
+
+actualRating = moviesForUser[0]
+predictedRating = model.predict(789, actualRating.product)
+squaredError = math.pow(predictedRating - actualRating.rating, 2)
+
+userProducts = ratings.map(lambda x: (x[0], x[1]))
+predictions = model.predictAll(userProducts).map(lambda x: ((x[0], x[1]), x[2]))
+ratingsAndPredictions = ratings.map(lambda x: ((x[0], x[1]), x[2])).join(predictions)
+MSE = ratingsAndPredictions.map(lambda x: math.pow((x[1][0] - x[1][1]), 2))\
+                    .reduce(lambda x, y: x + y) / ratingsAndPredictions.count()
+print("Mean Squared Error = ", MSE)                    
+
+actualMovies = sc.parallelize(moviesForUser).map(lambda x : x[1])
+predictedMovies = sc.parallelize(topKRecs).map(lambda x: x[1])
+apk10 = avgPrecisionK(actualMovies, predictedMovies, 10)
+
+
+
+
+
+
+
 
